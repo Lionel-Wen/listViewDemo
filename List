@@ -1,0 +1,137 @@
+<template>
+<!-- 滑动到底部重新请求数据 bottom处理滑动事件 ifRequest -->
+    <VirtualList @bottom='bottom' 
+    :ifRequest='ifRequest' :msg="msg" :blockHeight="blockHeight"
+    :ueserList="ueserList"
+    
+     >
+        <template v-slot:default="slotProps">
+            <router-link  class="routerLink" :to="{
+                    path:'/ListContent',
+                    query:{
+                        id:slotProps.thisInfo.id
+                    }
+                }">
+            <div class="left">
+                <div class="title">{{slotProps.thisInfo.title}}</div>
+                <div class="footer">
+                    <span class="reader"><img src="../../src/assets/icons/msg.png" alt="" class="readPic">{{slotProps.thisInfo.reads}}</span>
+                    <span class="author">{{slotProps.thisInfo.from}}</span>
+                    <span class="date">{{slotProps.thisInfo.date}}</span>
+                </div>
+            </div>
+            <img  class="picright" :src="pic[slotProps.thisInfo.image]" alt="">
+            </router-link>
+        </template>
+    </VirtualList>
+</template>
+
+<script>
+// 通过props传值的方式 以及$emit的方式触发事件
+    export default {
+        name:"Lsit",
+        data() {
+            return {
+                blockHeight:7, // 单个list的高度 rem
+                ueserList:[],
+                ifRequest:true, // 是否正在请求中
+                msg:null,
+                pic:[
+                    require('../../src/assets/news/0.webp'),
+                    require('../../src/assets/news/1.webp'),
+                    require('../../src/assets/news/2.webp'),
+                    require('../../src/assets/news/3.webp'),
+                    require('../../src/assets/news/4.webp'),
+                    require('../../src/assets/news/5.webp'),
+                    require('../../src/assets/news/6.webp'),
+                    require('../../src/assets/news/7.webp'),
+                    require('../../src/assets/news/8.webp'),
+                    require('../../src/assets/news/9.webp'),
+                    require('../../src/assets/news/10.webp'),
+                    require('../../src/assets/news/11.webp'),
+                    require('../../src/assets/news/12.webp'),
+                    require('../../src/assets/news/13.webp'),
+                    require('../../src/assets/news/14.webp'),
+                    require('../../src/assets/news/15.webp')
+                ],
+                mostCount:0,
+                startIndex:0,
+            }
+        },
+        methods:{
+            // 请求的
+            getMock(num) {
+                this.ifRequest = true;
+                this.msg = '数据正在请求中...'
+                return this.$http.get("http://localhost:4000/data?num=" + num)
+                    .then(msg=>{
+                        this.ifRequest = false;
+                        console.log(msg)
+                        return msg.data.list
+                    })
+                    .catch(err=>{
+                        this.ifRequest = false;
+                        this.msg = '数据请求错误，请重新请求'
+                        console.log(err);
+                        return false
+                    })
+            },
+            bottom() {
+                this.getMoreMock(20)
+            },
+            async getMoreMock(num) {
+                 let newData = await this.getMock(num);
+                 if (this.ueserList.length>=20000) {
+                     this.ifRequest = false;
+                     this.msg = "亲，最多加载这么多数据奥"
+                     return false;
+                 }
+                 this.ueserList = [...this.ueserList,...newData];
+                 this.ifRequest = false;
+            }
+        },
+        async created() {
+            console.log("created")
+            let result = await this.getMock(3);
+            console.log('result',result)
+            if (!!result && result.length>0) {
+                this.ueserList = [...result]
+            }
+        },
+        mounted() {
+        },
+    }
+</script>
+
+<style lang="less" scoped>
+.left {
+        width: 60%;
+        height: 5rem;
+        margin-left: 3%;
+        .title {
+            height: 3rem;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        .footer {
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            .readPic {
+                width: 1rem;
+                height: 1rem;
+            }
+            .author {
+                margin-left: 0.2rem;
+            }
+            .date {
+                margin-left: 0.5rem;
+            }  
+        }
+    }
+    .picright {
+        width: 25%;
+        height: 5rem;
+        margin-right: 3%;
+    }
+</style>
