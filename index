@@ -1,0 +1,187 @@
+<template>
+        <div class="scrollContainer" @scroll.passive="handleScroll" ref="scrollCoantiner">
+        <ul class="wrap" :style="padding">
+            <li v-for="(items,index) in showDataList" :key="index" :class="['list','list' + items.id]" :style='blockHeightRem' >
+                <slot :thisInfo='items'></slot>
+            </li> 
+            <div class="loading" v-if="ifRequest">
+               <div>{{msg}}</div>
+            </div>
+         </ul>
+       </div>
+</template>
+
+<script>
+/* eslint-disable*/
+// 封装长列表组件 通过作用域插槽实现 列表List的样式自定义
+    export default {
+        name:"VirtualList",
+        data() {
+            return {
+                mostCount:0,
+                startIndex:0,
+                blockHeightPx:0
+            }
+        },
+        props:{
+            ifRequest:{
+                type:Boolean,
+                default:()=>{return true},
+            },
+            msg:{
+                type:String
+            },
+            blockHeight:{
+                type:Number,
+                default:()=>{
+                    return 7
+                }
+            },
+            // 总的数据
+            ueserList:{
+                type:Array,
+                default:()=>[]
+            }
+        },
+        methods:{
+            handleScroll() {
+                // if (this.isScrollStatus) {
+                //     this.isScrollStatus = false;
+                //     let myTimer = setTimeout(()=>{
+                //         this.isScrollStatus = true;
+                //         clearTimeout(myTimer)
+                //     },30);
+                //     this.setMyData()
+                // }\
+                // 动画帧优化
+                let requestAnimation = window.requestAnimationFrame ||
+                    window.webkitRequestAnimationFrame ||
+                    window.msRequestAnimationFrame
+                let fps = 30;
+                let interval = 1000/ fps;
+                let then = Date.now();
+                requestAnimation(()=>{
+                    let now = Date.now();
+                    this.setMyData();
+                    // 间隔大于interval
+                    if (now - then >= interval) {
+                        then = now;
+                        requestAnimation(arguments.callee)
+                    }
+                })
+            },
+            setMyData() {
+                    // 获取当前是第几个在头部
+                    let currentIndex = ~~(this.$refs.scrollCoantiner.scrollTop / this.blockHeightPx);
+                    if (currentIndex === this.startIndex){
+                        return;
+                    } else {
+                        this.startIndex = currentIndex;
+                    }
+                    // 判断是否滑动到底部 底部从新加载新的数据
+                    if ((this.startIndex+ this.mostCount > this.ueserList.length -1) && !this.ifRequest) {
+                        // 滑动到底部触发 重新获取数据事件
+                        this.$emit('bottom')
+                    }
+            },
+            // 获取页面最大加载个数
+            getMostCount() {
+                // 把blockHeight转化为实际的px长度
+                this.blockHeightPx = (window.innerWidth/32) * this.blockHeight;
+                console.log(this.blockHeightPx)
+                // 最大单个视窗显示的个数
+                this.mostCount = ~~(window.innerHeight / this.blockHeightPx) + 2;
+                console.log(this.mostCount)
+            }
+        },
+        mounted() {
+            console.log("mounted")
+            // 屏幕总高度
+            this.getMostCount();
+            // 屏幕改变的时候重新获取
+            window.addEventListener('resize',()=>{
+                this.getMostCount()
+            })
+            // 翻转
+            window.addEventListener('orientationchange',()=>{
+                this.getMostCount()
+            })
+        },
+        computed:{
+            // List高度 rem
+            blockHeightRem() {
+                return {
+                    height:this.blockHeight+"rem"
+                }
+            },
+            // 获取容器最后一个元素的索引
+            endIndex() {
+               let endIndex = this.startIndex + this.mostCount*2;
+               if (!this.ueserList[endIndex]) {
+                   endIndex = this.ueserList.length -1;
+               }
+               return endIndex
+            },
+            // 定义一个待显示的列表数组元素
+            showDataList() {
+                let startIndex =0;
+                if (this.startIndex <= this.mostCount) {
+                    startIndex = 0
+                } else {
+                    startIndex = this.startIndex - this.mostCount;
+                }
+                return this.ueserList.slice(startIndex,this.endIndex)
+            },
+            // 定义上下空白高度
+            padding() {
+                let startIndex =0;
+                // 
+                if (this.startIndex <= this.mostCount) {
+                    startIndex = 0
+                } else {
+                    startIndex = this.startIndex - this.mostCount;
+                }
+                return {
+                    paddingTop:startIndex* this.blockHeightPx + "px",
+                    paddingBottom:(this.ueserList.length - this.endIndex) * this.blockHeightPx + "px"
+                }
+            },
+        },
+        activated() {
+           console.log("进入了",this.startIndex)
+           this.$refs.scrollCoantiner.scrollTop = (this.startIndex + 1) * this.blockHeightPx;
+        },
+        deactivated() {
+            console.log("l离开了",this.startIndex)
+        }
+    }
+</script>
+
+<style lang="less" scoped>
+    .scrollContainer {
+        width: 100%;
+        height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .wrap {
+        width:100%;
+        height: 100%;
+    }
+    .list {
+        width:100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-sizing: border-box;
+        border-bottom: 1px solid black;
+        .routerLink{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            width:100%;
+        }
+    }
+</style>
